@@ -1,5 +1,7 @@
-package net.ccbluex.liquidbounce.features.module.modules.combat
-
+/*
+ * Carnage Client
+ * Based on FDPClient
+ */
 package net.ccbluex.liquidbounce.features.module.modules.combat
 
 import net.ccbluex.liquidbounce.config.*
@@ -16,9 +18,16 @@ import org.lwjgl.input.Keyboard
 object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBAT_RAGE, Keyboard.KEY_NONE) {
 
     private val mode by choices("Mode", arrayOf("Left", "Right", "Random"), "Left")
+        .describe("Direção do deslocamento do knockback.")
+
     private val angle by float("Angle", 90.0f, 0.0f..180.0f)
+        .describe("Ângulo do deslocamento.")
+
     private val onlyOnKillAura by boolean("OnlyOnKillAura", true)
+        .describe("Só aplica quando o KillAura atacar.")
+
     private val chance by int("Chance", 100, 0..100, "%")
+        .describe("Chance de aplicar o deslocamento.")
 
     private val rotationSettings = RotationSettings(this)
         .withoutKeepRotation()
@@ -46,7 +55,6 @@ object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBA
 
         val flickYaw = baseYaw + offset
 
-        // 1. Aplica rotação silenciosa
         val success = RotationUtils.setTargetRotation(
             rotation = Rotation(flickYaw, basePitch),
             options = rotationSettings,
@@ -55,18 +63,14 @@ object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBA
 
         if (!success) return@handler
 
-        // 2. Cancela o ataque original do KillAura
         event.cancelEvent()
 
-        // 3. Agenda o ataque usando o PostRotationExecutor do FDPClient
-        // Isso garante que o servidor receba a rotação FALSA antes do ataque.
         PostRotationExecutor.runPostMove {
             val livePlayer = mc.thePlayer ?: return@runPostMove
             val world = mc.theWorld ?: return@runPostMove
             val liveTarget = world.getEntityByID(target.entityId) as? EntityLivingBase ?: return@runPostMove
 
             if (liveTarget.isEntityAlive) {
-                // Re-aplica a rotação e ataca
                 RotationUtils.setTargetRotation(
                     rotation = Rotation(flickYaw, basePitch),
                     options = rotationSettings,

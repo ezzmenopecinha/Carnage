@@ -1,19 +1,14 @@
 package net.ccbluex.liquidbounce.features.module.modules.combat
 
-import net.ccbluex.liquidbounce.config.boolean
-import net.ccbluex.liquidbounce.config.choices
-import net.ccbluex.liquidbounce.config.float
-import net.ccbluex.liquidbounce.config.int
+package net.ccbluex.liquidbounce.features.module.modules.combat
+
+import net.ccbluex.liquidbounce.config.*
 import net.ccbluex.liquidbounce.event.AttackEvent
 import net.ccbluex.liquidbounce.event.handler
 import net.ccbluex.liquidbounce.features.module.Category
 import net.ccbluex.liquidbounce.features.module.Module
-import net.ccbluex.liquidbounce.utils.extensions.rotation
-import net.ccbluex.liquidbounce.utils.rotation.PostRotationExecutor
-import net.ccbluex.liquidbounce.utils.rotation.Rotation
-import net.ccbluex.liquidbounce.utils.rotation.RotationPriority
-import net.ccbluex.liquidbounce.utils.rotation.RotationSettings
-import net.ccbluex.liquidbounce.utils.rotation.RotationUtils
+import net.ccbluex.liquidbounce.utils.extensions.*
+import net.ccbluex.liquidbounce.utils.rotation.*
 import net.ccbluex.liquidbounce.utils.rotation.RotationUtils.currentRotation
 import net.minecraft.entity.EntityLivingBase
 import org.lwjgl.input.Keyboard

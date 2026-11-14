@@ -1,7 +1,7 @@
 [
   {
     "modid": "fdpclient",
-    "name": "FDPClient",
+    "name": "Carnage",
     "description": "A free mixin-based injection hacked-client",
     "version": "${version}",
     "mcversion": "1.8.9",

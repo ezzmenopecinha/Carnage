@@ -24,6 +24,7 @@ import net.minecraft.client.gui.GuiScreen
 import net.minecraft.util.ResourceLocation
 import org.lwjgl.input.Mouse
 import org.lwjgl.input.Keyboard
+import org.lwjgl.opengl.GL11
 import java.awt.Color
 import java.io.IOException
 
@@ -128,10 +129,14 @@ class YzYGui(private val clickGui: ClickGUIModule) : GuiScreen() {
         try {
             assumeNonVolatile = true
 
+            val scale = clickGui.scale.toFloat()
+            val scaledMouseX = (mouseX / scale).toInt()
+            val scaledMouseY = (mouseY / scale).toInt()
+
             if (Mouse.hasWheel()) {
-                val wheel = if (net.ccbluex.liquidbounce.ui.client.clickgui.sidegui.SideGui.anyFocused || net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.isOpen) 0 else Mouse.getDWheel()
+                val wheel = if (SideGui.anyFocused || net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.isOpen) 0 else Mouse.getDWheel()
                 if (wheel != 0) {
-                    val handledScroll = panels.asReversed().any { it.handleScroll(mouseX, mouseY, wheel) }
+                    val handledScroll = panels.asReversed().any { it.handleScroll(scaledMouseX, scaledMouseY, wheel) }
                     if (!handledScroll) {
                         handleScroll(wheel)
                     }
@@ -141,20 +146,27 @@ class YzYGui(private val clickGui: ClickGUIModule) : GuiScreen() {
             drawImage(hudIcon, 9, height - 41, 32, 32)
 
             val delta = (System.currentTimeMillis() - lastMS).toInt()
+
+            // Aplica a escala na renderização
+            GL11.glPushMatrix()
+            GL11.glScalef(scale, scale, 1.0f)
+
             panels.forEach {
                 it.updateFade(delta)
-                it.drawScreen(mouseX, mouseY, partialTicks)
+                it.drawScreen(scaledMouseX, scaledMouseY, partialTicks)
             }
 
-            sideGui.drawScreen(mouseX, mouseY, partialTicks, alpha)
+            sideGui.drawScreen(scaledMouseX, scaledMouseY, partialTicks, alpha)
 
-            net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.draw(sideGui, this, mouseX, mouseY)
+            net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.draw(sideGui, this, scaledMouseX, scaledMouseY)
 
             bindInputBox?.let { box ->
-                box.drawScreen(mouseX, mouseY, partialTicks)
+                box.drawScreen(scaledMouseX, scaledMouseY, partialTicks)
             }
 
-            search.draw(fontRendererObj, width, Color(guiColor).rgb)
+            search.draw(fontRendererObj, (width / scale).toInt(), Color(guiColor).rgb)
+
+            GL11.glPopMatrix()
 
             lastMS = System.currentTimeMillis()
 
@@ -170,22 +182,26 @@ class YzYGui(private val clickGui: ClickGUIModule) : GuiScreen() {
     @Throws(IOException::class)
     override fun mouseClicked(mouseX: Int, mouseY: Int, mouseButton: Int) {
         try {
-            if (search.mouseClicked(mouseX, mouseY, mouseButton)) return
-            if (net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.handleClick(mouseX, mouseY)) return
+            val scale = clickGui.scale.toFloat()
+            val scaledMouseX = (mouseX / scale).toInt()
+            val scaledMouseY = (mouseY / scale).toInt()
+
+            if (search.mouseClicked(scaledMouseX, scaledMouseY, mouseButton)) return
+            if (net.ccbluex.liquidbounce.ui.client.clickgui.ClickGuiHeader.handleClick(scaledMouseX, scaledMouseY)) return
             bindInputBox?.let { box ->
-                if (box.mouseClicked(mouseX, mouseY, mouseButton)) {
+                if (box.mouseClicked(scaledMouseX, scaledMouseY, mouseButton)) {
                     return
                 }
             }
 
-            val adjustedMouseY = mouseY + yShift
+            val adjustedMouseY = scaledMouseY + yShift
 
             if (mouseButton == 2) { // Middle click
                 panels.forEach { panel ->
                     if (panel.isExtended || search.active) {
                         panel.visibleElements().forEach { element ->
-                            if (element.isHovering(mouseX, adjustedMouseY)) {
-                                startBindSelection(element.module, mouseX, mouseY)
+                            if (element.isHovering(scaledMouseX, adjustedMouseY)) {
+                                startBindSelection(element.module, scaledMouseX, scaledMouseY)
                                 return
                             }
                         }
@@ -193,9 +209,10 @@ class YzYGui(private val clickGui: ClickGUIModule) : GuiScreen() {
                 }
             }
 
-            panels.forEach { it.mouseClicked(mouseX, adjustedMouseY, mouseButton) }
-            sideGui.mouseClicked(mouseX, mouseY, mouseButton)
+            panels.forEach { it.mouseClicked(scaledMouseX, adjustedMouseY, mouseButton) }
+            sideGui.mouseClicked(scaledMouseX, scaledMouseY, mouseButton)
 
+            // Usa as coordenadas originais para clicar no ícone do HUD
             if (mouseX in 9 until 41 && mouseY in (height - 41) until height) {
                 HudDesigner.openSelected()
             }
@@ -206,11 +223,15 @@ class YzYGui(private val clickGui: ClickGUIModule) : GuiScreen() {
 
     override fun mouseReleased(mouseX: Int, mouseY: Int, state: Int) {
         try {
-            bindInputBox?.mouseReleased(mouseX, mouseY, state)
+            val scale = clickGui.scale.toFloat()
+            val scaledMouseX = (mouseX / scale).toInt()
+            val scaledMouseY = (mouseY / scale).toInt()
 
-            val adjustedMouseY = mouseY + yShift
-            panels.forEach { it.mouseReleased(mouseX, adjustedMouseY, state) }
-            sideGui.mouseReleased(mouseX, mouseY, state)
+            bindInputBox?.mouseReleased(scaledMouseX, scaledMouseY, state)
+
+            val adjustedMouseY = scaledMouseY + yShift
+            panels.forEach { it.mouseReleased(scaledMouseX, adjustedMouseY, state) }
+            sideGui.mouseReleased(scaledMouseX, scaledMouseY, state)
         } catch (e: Exception) {
             println("Error during mouse release handling: ${e.message}")
         }

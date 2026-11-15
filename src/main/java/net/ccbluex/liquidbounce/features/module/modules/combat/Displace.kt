@@ -11,7 +11,7 @@ import net.ccbluex.liquidbounce.features.module.Category
 import net.ccbluex.liquidbounce.features.module.Module
 import net.ccbluex.liquidbounce.utils.extensions.*
 import net.ccbluex.liquidbounce.utils.rotation.*
-import net.ccbluex.liquidbounce.utils.rotation.RotationUtils.currentRotation
+import net.ccbluex.liquidbounce.utils.timing.TickedActions.nextTick
 import net.minecraft.entity.EntityLivingBase
 import org.lwjgl.input.Keyboard
 
@@ -33,8 +33,18 @@ object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBA
         .withoutKeepRotation()
         .withRequestPriority(RotationPriority.CRITICAL)
 
+    // Evita loop infinito se o ataque disparar o AttackEvent de novo
+    private var ignoreNextAttack = false
+
     val onAttack = handler<AttackEvent>(priority = -1) { event ->
         if (!state) return@handler
+        
+        // Se fomos nós que causamos esse evento, ignora.
+        if (ignoreNextAttack) {
+            ignoreNextAttack = false
+            return@handler
+        }
+
         if (onlyOnKillAura && !KillAura.state) return@handler
         if (Math.random() * 100 >= chance) return@handler
 
@@ -55,6 +65,7 @@ object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBA
 
         val flickYaw = baseYaw + offset
 
+        // 1. Aplica a rotação silenciosa
         val success = RotationUtils.setTargetRotation(
             rotation = Rotation(flickYaw, basePitch),
             options = rotationSettings,
@@ -63,21 +74,31 @@ object Displace : Module("Displace", Category.COMBAT, Category.SubCategory.COMBA
 
         if (!success) return@handler
 
+        // 2. Cancela o ataque original do KillAura
         event.cancelEvent()
 
-        PostRotationExecutor.runPostMove {
-            val livePlayer = mc.thePlayer ?: return@runPostMove
-            val world = mc.theWorld ?: return@runPostMove
-            val liveTarget = world.getEntityByID(target.entityId) as? EntityLivingBase ?: return@runPostMove
+        // 3. Agenda o ataque para o PRÓXIMO TICK (Thread Principal)
+        val targetId = target.entityId
 
-            if (liveTarget.isEntityAlive) {
-                RotationUtils.setTargetRotation(
-                    rotation = Rotation(flickYaw, basePitch),
-                    options = rotationSettings,
-                    ticks = 1
-                )
-                livePlayer.attackEntityWithModifiedSprint(liveTarget, false) {}
-            }
+        nextTick {
+            val livePlayer = mc.thePlayer ?: return@nextTick
+            val world = mc.theWorld ?: return@nextTick
+            val liveTarget = world.getEntityByID(targetId) as? EntityLivingBase ?: return@nextTick
+
+            if (!liveTarget.isEntityAlive) return@nextTick
+
+            // Re-aplica a rotação no tick do ataque
+            RotationUtils.setTargetRotation(
+                rotation = Rotation(flickYaw, basePitch),
+                options = rotationSettings,
+                ticks = 1
+            )
+
+            // Marca para ignorar o evento que vamos disparar
+            ignoreNextAttack = true
+            
+            // Executa o ataque
+            livePlayer.attackEntityWithModifiedSprint(liveTarget, false) {}
         }
     }
 }

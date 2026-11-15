@@ -9,6 +9,7 @@ import net.ccbluex.liquidbounce.features.module.Module
 import net.ccbluex.liquidbounce.ui.font.Fonts
 import net.ccbluex.liquidbounce.utils.render.RenderUtils
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.renderer.GlStateManager
 import java.awt.Color
 
@@ -16,7 +17,7 @@ import java.awt.Color
  * Watermark HUD para o client Carnage.
  * Exibe informações do sistema (FPS, Ping, TPS) nos cantos da tela.
  */
-object Watermark : Module("Watermark", Category.RENDER) {
+object Watermark : Module("Watermark", Category.Render) { // Corrigido para PascalCase
 
     // --- Configurações via Delegates (Padrão NextGen) ---
     private val position by choices("Position", arrayOf("TopLeft", "TopRight", "BottomLeft", "BottomRight"), "TopLeft")
@@ -42,12 +43,12 @@ object Watermark : Module("Watermark", Category.RENDER) {
         }
     }
 
-    val onRender2D = handler<Render2DEvent> { event ->
-        // Fonte correta extraída do Arraylist.kt
-        val font = Fonts.fontSemibold40 
-        val sr = event.scaledResolution
+    val onRender2D = handler<Render2DEvent> {
+        val font = Fonts.fontSemibold40
         
-        // Estrutura para guardar pedaços de texto e suas cores individuais
+        // Correção: Instanciar ScaledResolution manualmente já que o evento não expõe
+        val sr = ScaledResolution(mc) 
+        
         data class TextPart(val text: String, val color: Int)
         val parts = mutableListOf<TextPart>()
         
@@ -63,12 +64,15 @@ object Watermark : Module("Watermark", Category.RENDER) {
         // 2. Adiciona métricas conforme config
         if (showFps) addPart("FPS: ${Minecraft.getDebugFPS()}")
         if (showPing) {
-            val ping = mc.netHandler?.getPlayerInfo(mc.thePlayer?.uniqueID)?.responseTime ?: -1
+            // Safe call para evitar NPE se estiver em menu sem player instanciado
+            val ping = mc.thePlayer?.let { player ->
+                mc.netHandler?.getPlayerInfo(player.uniqueID)?.responseTime ?: -1
+            } ?: -1
             addPart("Ping: ${if (ping >= 0) "${ping}ms" else "n/a"}")
         }
         if (showTps) addPart("TPS: ${"%.1f".format(tps)}")
         
-        // --- Cálculo de Dimensões (Tudo em Float para evitar ambiguidade) ---
+        // --- Cálculo de Dimensões (Conversão explícita para Float para evitar ambiguidade) ---
         var totalWidth = 0f
         parts.forEach { totalWidth += font.getStringWidth(it.text).toFloat() }
         val boxHeight = font.FONT_HEIGHT.toFloat() + 4f // Altura da fonte + padding vertical
@@ -80,12 +84,15 @@ object Watermark : Module("Watermark", Category.RENDER) {
         val scaledTotalWidth = totalWidth * scale
         val scaledBoxHeight = boxHeight * scale
         
+        val screenWidth = sr.scaledWidth.toFloat()
+        val screenHeight = sr.scaledHeight.toFloat()
+        
         // --- Cálculo de Posição (X, Y) baseado no canto escolhido ---
         when (position) {
             "TopLeft" -> { x = padding; y = padding }
-            "TopRight" -> { x = sr.scaledWidth.toFloat() - scaledTotalWidth - padding; y = padding }
-            "BottomLeft" -> { x = padding; y = sr.scaledHeight.toFloat() - scaledBoxHeight - padding }
-            "BottomRight" -> { x = sr.scaledWidth.toFloat() - scaledTotalWidth - padding; y = sr.scaledHeight.toFloat() - scaledBoxHeight - padding }
+            "TopRight" -> { x = screenWidth - scaledTotalWidth - padding; y = padding }
+            "BottomLeft" -> { x = padding; y = screenHeight - scaledBoxHeight - padding }
+            "BottomRight" -> { x = screenWidth - scaledTotalWidth - padding; y = screenHeight - scaledBoxHeight - padding }
         }
         
         // --- Renderização ---
@@ -100,7 +107,7 @@ object Watermark : Module("Watermark", Category.RENDER) {
                 totalWidth + 2f, boxHeight + 2f, 
                 Color(0, 0, 0, 128).rgb, // Preto com 50% de alpha
                 2f, 
-                RenderUtils.RoundedCorners.NONE // Usando NONE conforme enums do Arraylist.kt
+                RenderUtils.RoundedCorners.NONE // Enum correto do seu fork
             )
         }
         

@@ -34,7 +34,7 @@ object FileManager : MinecraftInstance, Iterable<FileConfig> by FILE_CONFIGS {
 
     private val sections = mutableListOf<ConfigSection>()
 
-    val dir = File(mc.mcDataDir, "FDPCLIENT")
+    val dir = File(mc.mcDataDir, "Carnage")
     val fontsDir = File(dir, "fonts")
     val settingsDir = File(dir, "settings")
     val guiLayoutsDir = File(dir, "gui-layouts")
